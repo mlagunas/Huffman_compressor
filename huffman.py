@@ -1,11 +1,20 @@
 from itertools import groupby
 from heapq import *
 
+
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+"""""""""""""""""""""" AUX OBJECTS/VARS """""""""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+# Representation of a binary tree node, it points to its left and right
+# child, and to its parent. It has an item (character) and a weight which
+# corresponds with the frequency of the character in a given input
 class Node(object):
 	left = None
 	right = None
 	item = None
 	weight = 0
+	parent = None
 
 	def __init__(self, i, w):
 		self.item = i
@@ -15,13 +24,30 @@ class Node(object):
 		self.left = ln
 		self.right = rn
 
+	def setLeft(self,ln):
+		self.left = ln
+
+	def setRight(self,rn):
+		self.right = rn
+
+	def setParent(self,pn):
+		self.parent = pn
+
 	def __repr__(self):
 		return "%s - %s — %s _ %s" % (self.item, self.weight, self.left, self.right)
 
 	def __cmp__(self, a):
 		return cmp(self.weight, a.weight)
 
-EOF = '000000000'
+# Representation of an end of file used to read the header.
+# since the algorithm always read 1 bit check if it is 1 or 0
+# and 1 byte if it was one, it
+EOF = 'dummyEOF'
+
+
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+"""""""""""""""""""""""""""" COMPRESSION """"""""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 # It goes through the generated tree giving each final-leaf node
 # a binary value. (only final-leaf nodes have "letter-weight"), None
@@ -29,28 +55,77 @@ EOF = '000000000'
 # It stores it in a hash-table "codes[index] = value" where index is
 # the encoded character and value its binary result.
 def codeIt(s, node, codes):
-    if node.item:
-        if not s:
-            codes[node.item] = "0"
-        else:
-            codes[node.item] = s
-    else:
-        codeIt(s+"0", node.left, codes)
-        codeIt(s+"1", node.right, codes)
+	if node.item:
+		if not s:
+			codes[node.item] = "0"
+		else:
+			codes[node.item] = s
+	else:
+		codeIt(s+"0", node.left, codes)
+		codeIt(s+"1", node.right, codes)
 
-def huffmanCompression(input):
-    itemqueue =  [Node(a,len(list(b))) for a,b in groupby(sorted(input))]
-    heapify(itemqueue)
-    while len(itemqueue) > 1:
-    	l = heappop(itemqueue)
-    	r = heappop(itemqueue)
-    	n = Node(None, r.weight+l.weight)
-    	n.setChildren(l,r)
-    	heappush(itemqueue, n)
+def toByte(smth):
+	if len(smth) > 1:
+		res = ""
+		for i in smth:
+			res += toByte(i)
+		return res
+	else:
+		res = bin(ord(smth))[2:]
+		while len(res) != 8:
+			res = '0'+res
+		return res
 
-    codes = {}
-    codeIt("", itemqueue[0], codes)
-    return codes, "".join([codes[a] for a in input]), itemqueue[0]
+def treeToByte(node):
+	if node.item:
+		return '1' + toByte(node.item)
+	else:
+		return '0' + treeToByte(node.left) + treeToByte(node.right)
+
+def preCompression(input):
+	itemqueue = [Node(a,len(list(b))) for a,b in groupby(sorted(input))] # input sorted and grouped by character
+	count = '{0:08b}'.format(len(itemqueue)) #nElements in binary an 8 digits
+	heapify(itemqueue) #make the list a heap O(n)
+	tree = queueToTree(itemqueue) #create the tree using the heap
+
+	# retrieve the compressed input and the codes for each char
+	codes = {}
+	codeIt("", tree, codes)
+
+	# make the header of the file (nElements + treeStructure)
+	cTree = count + treeToByte(tree)
+
+	return codes, "".join([codes[a] for a in input]), cTree
+
+def queueToTree(queue):
+	while len(queue) > 1:
+		l = heappop(queue)
+		r = heappop(queue)
+		n = Node(None, int(r.weight)+int(l.weight))
+		n.setChildren(l,r)
+		heappush(queue, n)
+	return queue[0]
+
+def huffmanCompression(inputFile, outFile):
+	inf = open(inputFile,'r')
+	outf = open(outFile,'wb')
+
+	input = inf.read()
+
+	codes, compression, head = preCompression(input)
+	output = head+compression
+	hexGrp = []
+	while output:
+		hexGrp.append(output[:8])
+		output = output[8:]
+	output = bytes([int(group,2) for group in hexGrp])
+	size = outfp.write(output)
+	outfp.close()
+
+
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+"""""""""""""""""""""""""" DECOMPRESSION """"""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 def decodeIt(input, node):
 	if node.item:
@@ -61,71 +136,67 @@ def decodeIt(input, node):
 		else:
 			return decodeIt(input[1:], node.right)
 
-def huffmanDecompression(input):
-	s  = ""
-	while len(input) > 0:
-		char, input = decodeIt(input, tree)
-		s+= char
-	return s
-
-def storeTree(node):
-    code = ''
-    if not node:
-		return code #EOF represented with 9 zeros
-    if not node.left and not node.right: #Not final-leaf (without content)
-		code += '1' + toByte(node.item) + toByte(str(node.weight))
-    return code + storeTree(node.left) + storeTree(node.right)
-
-def toByte(smth):
-	if len(smth) > 1:
-		res = ""
-		for i in smth:
-			res += toByte(i)
-			return res
-	else:
-		res = bin(ord(smth))[2:]
-		while len(res) != 8:
-			res = '0'+res
-		return res
-
-def getTree(input):
-	itemqueue = []
-	i = 0
-	eofFound = False
-	while not eofFound:
-		print i
-		if input[i] == '1':
-			itemqueue.append(Node(chr(int(input[i+1:i+9], 2)),chr(int(input[i+9:i+17],2))))
-			i+=17
+def buildTree(input, count, node = None, root = None):
+	print count
+	if count > 0:
+		if input[0] == '0':
+			if not node:
+				root =  Node(None, 0)
+				return buildTree(input[1:], count, root, root)
+			else:
+				if node.left and node.right:
+					return buildTree(input, count, node.parent, root)
+				else:
+					n = Node(None,0)
+					n.setParent(node)
+					if node.left:
+						node.setRight(n)
+					else:
+						node.setLeft(n)
+					return buildTree(input[1:], count, n, root)
 		else:
-			print input[i:i+9]
-			if input[i:i+9] == EOF:
-				eofFound = True
-			i+=1
-	return itemqueue, i
+			if not node:
+				count -= 1
+				root = Node(chr(int(input[1:9],2)),0)
+				print (chr(int(input[1:9],2)))
+				return buildTree(input[9:], count, root, root)
+			elif node.left and node.right:
+				return buildTree(input, count, node.parent, root)
+			else:
+				count -= 1
+				print(chr(int(input[1:9],2)))
+				n = Node(chr(int(input[1:9],2)),0)
+				n.setParent(node)
+				if node.left:
+					node.setRight(n)
+				else:
+					node.setLeft(n)
+				return buildTree(input[9:], count, node, root)
+	else:
+		return root
 
+def huffmanDecompression(input, tree):
+	s  = ""
+	if len(input) == 1:
+		char, input = decodeIt(input, tree)
+		return char
+	else:
+		while len(input) > 0:
+			char, input = decodeIt(input, tree)
+			print char
+			s+= char
+		return s
+
+
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+"""""""""""""""""""""""""""""""" MAIN """""""""""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 input = ""
-with open("/home/mlagunas/DLart/curated/images/ambulance/Ambulance-1.png") as f:
-	    byte = f.read(1)
-	    while byte != "":
-	        input += byte
-	        byte = f.read(1)
-print input
-input = "m iii s"
-codes, compression, tree = huffmanCompression(input)
-print compression
-a = storeTree(tree) + EOF + compression
-print a
-b, bits = getTree(a)
 
-print b
-print getTree(a)
-print charToByte(content[3][1])
-print compression
-type(content[3][1])
-
-
-res = huffmanDecompression(compression)
+input = "mlagunas arto ññ"
+codes, compression, head = preCompression(input)
+tree = buildTree(head[8:],int(head[:8],2))
+res = huffmanDecompression(compression, tree)
 
 print res
