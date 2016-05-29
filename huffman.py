@@ -1,5 +1,13 @@
+# -*- coding: utf-8 -*-
+
+# Author; Manuel Lagunas
+# 29/5/2016
+# Readable code implementing huffman compression/decompression
+
 from itertools import groupby
 from heapq import *
+import sys
+import os
 
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -39,11 +47,18 @@ class Node(object):
 	def __cmp__(self, a):
 		return cmp(self.weight, a.weight)
 
-# Representation of an end of file used to read the header.
-# since the algorithm always read 1 bit check if it is 1 or 0
-# and 1 byte if it was one, it
-EOF = 'dummyEOF'
+# Auxiliar method to fast-print how to use the following application
+def usage():
+	print "USAGE: \npython huffman.py -c|-d file"
+	print "\t-c : To compress file"
+	print "\tfile: file to compress/decompress"
+	print "\t-d : To decompress file\npython huffman.py -t file1 file2"
+	print "\t-t : Testing mode"
+	print "\tfile(1,2): files to compare"
 
+#Set true if you want to proccedd with the canonical huffman compression/decompression
+#TO-DO
+canonical = False
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 """""""""""""""""""""""""""" COMPRESSION """"""""""""""""""""""""""""
@@ -64,6 +79,7 @@ def codeIt(s, node, codes):
 		codeIt(s+"0", node.left, codes)
 		codeIt(s+"1", node.right, codes)
 
+# Changes a char or string to its byte representation
 def toByte(smth):
 	if len(smth) > 1:
 		res = ""
@@ -76,13 +92,17 @@ def toByte(smth):
 			res = '0'+res
 		return res
 
+# Stores the tree structure as a binary string, each not final-leaf will be
+# a 0 and each final-leaf will be 1 followed by its item in byte representation
 def treeToByte(node):
 	if node.item:
 		return '1' + toByte(node.item)
 	else:
 		return '0' + treeToByte(node.left) + treeToByte(node.right)
 
+# It returns the compressed code and its codigied tree for a given string (inputFile)
 def preCompression(input):
+	input = "Asdasdsdaadsadsdsa vccbvbcvvcbbvc"
 	itemqueue = [Node(a,len(list(b))) for a,b in groupby(sorted(input))] # input sorted and grouped by character
 	count = '{0:08b}'.format(len(itemqueue)) #nElements in binary an 8 digits
 	heapify(itemqueue) #make the list a heap O(n)
@@ -91,12 +111,16 @@ def preCompression(input):
 	# retrieve the compressed input and the codes for each char
 	codes = {}
 	codeIt("", tree, codes)
+	if canonical:
+		codes = canonicalHuff(codes)
+		code = "".join(codes[a][0] for a in input)
+	else:
+		# make the header of the file (nElements + treeStructure)
+		cTree = count + treeToByte(tree)
+		return codes, "".join([codes[a] for a in input]), cTree
 
-	# make the header of the file (nElements + treeStructure)
-	cTree = count + treeToByte(tree)
-
-	return codes, "".join([codes[a] for a in input]), cTree
-
+# Given an element which represents a tree, it builds the codes for each final-leaf
+# that represents a character
 def queueToTree(queue):
 	while len(queue) > 1:
 		l = heappop(queue)
@@ -106,27 +130,75 @@ def queueToTree(queue):
 		heappush(queue, n)
 	return queue[0]
 
+# It retursn the canonical codes for the given input codes
+def canonicalHuff(codes):
+	canon = []
+	codes = sorted(codes.items(), key=lambda x: (len(x[1]), x[0]))
+	for i in codes:
+		canon.append( (i[0], i[1], len(i[1])) )
+	print canon
+
+	minsize=canon[0][2]
+	co = '0'
+	if len(co)<minsize:
+		co='0'*(minsize-len(co))+co
+
+	ne = [(canon[0][0],co,len(co))]
+
+	code = 0
+	for i in range(1,len(canon)):
+		code = (code+1) << canon[i][2] - canon[i-1][2]
+		co = bin(code)[2:]
+		l = len(co)
+		if l<minsize:co='0'*(minsize-l)+co
+		ne.append((canon[i][0],co,len(co)))
+	for a in ne: print a
+	return ne
+
+
+
+# It recieves an input and output file, it compress the input file and stores
+# the result in the output file. the structure of the outFile will be 1byte to
+# know the bits needed to end the last byte, another byte to know the size of the
+# header, the header and the compressed text.
 def huffmanCompression(inputFile, outFile):
+	# Open files and read the input we will compress
 	inf = open(inputFile,'r')
 	outf = open(outFile,'wb')
-
 	input = inf.read()
 
+	# Generate the tree and codes and put it together
 	codes, compression, head = preCompression(input)
 	output = head+compression
-	hexGrp = []
+
+	# Make the text suit to bytes size
+	count = 0
+	while len(output)%8 != 0:
+		count += 1
+		output += '0'
+	count = chr(ord(str(count)))
+
+	# Append 8 bits of the output as a char
+	bOut = count
 	while output:
-		hexGrp.append(output[:8])
+		bOut += chr(int(output[:8],2))
 		output = output[8:]
-	output = bytes([int(group,2) for group in hexGrp])
-	size = outfp.write(output)
-	outfp.close()
+
+	# Write the binaryOutput (as chars) in the binary file
+	outf.write(bOut) #Get number of written bytes
+	outf.close()
+	inf.close()
+
+	return len(bOut)
 
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 """""""""""""""""""""""""" DECOMPRESSION """"""""""""""""""""""""""
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
+# It decodes a given tree with the input returning the first character found.
+# if input[i] = 0 then it goes to the left children, if it is 1 it goes to the
+# right one. Once it has found a final-leaf, it returns it.
 def decodeIt(input, node):
 	if node.item:
 		return node.item, input
@@ -136,67 +208,106 @@ def decodeIt(input, node):
 		else:
 			return decodeIt(input[1:], node.right)
 
+# It iterates over the binary input retrieving the chars it represents
+# it calls the function decodeIt to retrieve the char. At the end it returns
+# the decoded string.
+def preDecompression(input, tree):
+	s  = ""
+	if len(input) == 1:
+		char, input = decodeIt(input, tree)
+		s+= char
+	else:
+		while len(input) > 0:
+			char, input = decodeIt(input, tree)
+			s+= char
+	return s
+
+# It recursively build the tree from a binary string input. The 0 represents
+# non final-leafs and ones represent final-leafs.
 def buildTree(input, count, node = None, root = None):
-	print count
 	if count > 0:
-		if input[0] == '0':
-			if not node:
+		if input[0] == '0': #not final-leaf node
+			if not node: #create root
 				root =  Node(None, 0)
 				return buildTree(input[1:], count, root, root)
 			else:
-				if node.left and node.right:
+				if node.left and node.right: #if node has both children go to node parent and check again
 					return buildTree(input, count, node.parent, root)
 				else:
 					n = Node(None,0)
 					n.setParent(node)
-					if node.left:
+					if node.left: #If left children exits new node has to be righ children
 						node.setRight(n)
-					else:
+					else: #If there are no nodes, new node has to be left children
 						node.setLeft(n)
 					return buildTree(input[1:], count, n, root)
-		else:
-			if not node:
+		else: #final-leaf node
+			if not node: #create root with item value
 				count -= 1
 				root = Node(chr(int(input[1:9],2)),0)
-				print (chr(int(input[1:9],2)))
 				return buildTree(input[9:], count, root, root)
-			elif node.left and node.right:
+			elif node.left and node.right: #if node has both children go to node parent and check again
 				return buildTree(input, count, node.parent, root)
 			else:
 				count -= 1
-				print(chr(int(input[1:9],2)))
 				n = Node(chr(int(input[1:9],2)),0)
 				n.setParent(node)
-				if node.left:
+				if node.left: #If left children exits new node has to be righ children
 					node.setRight(n)
-				else:
+				else: #If there are no nodes, new node has to be left children
 					node.setLeft(n)
 				return buildTree(input[9:], count, node, root)
 	else:
-		return root
+		return root, input
 
-def huffmanDecompression(input, tree):
-	s  = ""
-	if len(input) == 1:
-		char, input = decodeIt(input, tree)
-		return char
-	else:
-		while len(input) > 0:
-			char, input = decodeIt(input, tree)
-			print char
-			s+= char
-		return s
+# It recieves the input and outputFile. It reads the input file to
+# retrieve the binary representation of the outputFile. Carefully reads
+# the given lenghts and the header, it builds the binary tree to decompress
+# the code an decompress it. Then it stores the message in the outFile.
+def huffmanDecompression(inputFile, outFile):
+	inf = open(inputFile,'r')
+	outf = open(outFile,'w')
 
+	input = inf.read()
+
+	count = int(input[0]) #Get nBits needed to complete last byte
+	input = input[1:]
+
+	code = ""
+	for char in input:
+		code += '{0:08b}'.format(int(ord(char)))
+
+	tree, compression = buildTree(code[8:],int(code[:8],2)) #Get the tree and rest of the code to decompress
+	res = preDecompression(compression[:-count], tree) #Decompress the code
+	outf.write(res)#Write result in the file
+
+	inf.close()
+	outf.close()
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 """""""""""""""""""""""""""""""" MAIN """""""""""""""""""""""""""""""
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
-input = ""
-
-input = "mlagunas arto ññ"
-codes, compression, head = preCompression(input)
-tree = buildTree(head[8:],int(head[:8],2))
-res = huffmanDecompression(compression, tree)
-
-print res
+# arguments
+if len(sys.argv) == 3 :
+	type = sys.argv[1]
+	file = sys.argv[2]
+	if type == "-c": #Compress
+		compressedSize = huffmanCompression(file, file+".huf")
+		uncompressedSize = os.stat(file).st_size
+		print('Uncompressed Size: %s bytes'%uncompressedSize)
+		print('Compressed Size: %s bytes'%compressedSize)
+	elif type == "-d": #decompress
+		huffmanDecompression(file+".huf", file)
+	else:
+		usage()
+elif len(sys.argv) == 4:
+	type = sys.argv[1]
+	file1 = sys.argv[2]
+	file2 = sys.argv[3]
+	if type == "-t": #decompress
+		os.system("diff " + file1 + " " + file2)
+	else:
+		usage()
+else:
+	usage()
