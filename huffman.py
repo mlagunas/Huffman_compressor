@@ -8,6 +8,7 @@ from itertools import groupby
 from heapq import *
 import sys
 import os
+import time
 
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -102,7 +103,6 @@ def treeToByte(node):
 
 # It returns the compressed code and its codigied tree for a given string (inputFile)
 def preCompression(input):
-	input = "Asdasdsdaadsadsdsa vccbvbcvvcbbvc"
 	itemqueue = [Node(a,len(list(b))) for a,b in groupby(sorted(input))] # input sorted and grouped by character
 	count = '{0:08b}'.format(len(itemqueue)) #nElements in binary an 8 digits
 	heapify(itemqueue) #make the list a heap O(n)
@@ -111,6 +111,7 @@ def preCompression(input):
 	# retrieve the compressed input and the codes for each char
 	codes = {}
 	codeIt("", tree, codes)
+	codes
 	if canonical:
 		codes = canonicalHuff(codes)
 		code = "".join(codes[a][0] for a in input)
@@ -155,8 +156,6 @@ def canonicalHuff(codes):
 	for a in ne: print a
 	return ne
 
-
-
 # It recieves an input and output file, it compress the input file and stores
 # the result in the output file. the structure of the outFile will be 1byte to
 # know the bits needed to end the last byte, another byte to know the size of the
@@ -199,27 +198,39 @@ def huffmanCompression(inputFile, outFile):
 # It decodes a given tree with the input returning the first character found.
 # if input[i] = 0 then it goes to the left children, if it is 1 it goes to the
 # right one. Once it has found a final-leaf, it returns it.
-def decodeIt(input, node):
+def decodeIt(input, node, code = ""):
 	if node.item:
-		return node.item, input
+		return node.item, input, code
 	else:
 		if input[0] == '0':
-			return decodeIt(input[1:], node.left)
+			return decodeIt(input[1:], node.left, code + '0')
 		else:
-			return decodeIt(input[1:], node.right)
+			return decodeIt(input[1:], node.right, code + '1')
 
 # It iterates over the binary input retrieving the chars it represents
 # it calls the function decodeIt to retrieve the char. At the end it returns
 # the decoded string.
 def preDecompression(input, tree):
 	s  = ""
+	codes = {}
 	if len(input) == 1:
-		char, input = decodeIt(input, tree)
+		char, input, code = decodeIt(input, tree)
 		s+= char
 	else:
 		while len(input) > 0:
-			char, input = decodeIt(input, tree)
-			s+= char
+			found = False
+			for i in sorted(codes, reverse=True):
+				if input[0:len(i)] in codes:
+					s += codes[input[0:len(i)]]
+					found = True
+					input = input[len(i):]
+					break
+			if not found:
+				char, input, code = decodeIt(input, tree)
+				if not code in codes:
+					codes[code] = char
+				s+= char
+	print
 	return s
 
 # It recursively build the tree from a binary string input. The 0 represents
@@ -288,17 +299,29 @@ def huffmanDecompression(inputFile, outFile):
 """""""""""""""""""""""""""""""" MAIN """""""""""""""""""""""""""""""
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
+"""input = "probando wey"
+_, comp, head = preCompression(input)
+out = head+comp
+tree, compression = buildTree(out[8:],int(out[:8],2))
+preDecompression(compression, tree)"""
+
 # arguments
 if len(sys.argv) == 3 :
 	type = sys.argv[1]
 	file = sys.argv[2]
 	if type == "-c": #Compress
+		start = time.time()
 		compressedSize = huffmanCompression(file, file+".huf")
+		end = time.time()
+		print ("Time neeed: " + str(end - start) + "seg")
 		uncompressedSize = os.stat(file).st_size
 		print('Uncompressed Size: %s bytes'%uncompressedSize)
 		print('Compressed Size: %s bytes'%compressedSize)
 	elif type == "-d": #decompress
+		start = time.time()
 		huffmanDecompression(file+".huf", file)
+		end = time.time()
+		print ("Time neeed: " + str(end - start) + "seg")
 	else:
 		usage()
 elif len(sys.argv) == 4:
