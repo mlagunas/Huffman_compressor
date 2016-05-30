@@ -10,7 +10,6 @@ import sys
 import os
 import time
 
-
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 """""""""""""""""""""" AUX OBJECTS/VARS """""""""""""""""""""""""""""
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -213,24 +212,25 @@ def decodeIt(input, node, code = ""):
 def preDecompression(input, tree):
 	s  = ""
 	codes = {}
+	doH = len(input) > 80000
 	if len(input) == 1:
 		char, input, code = decodeIt(input, tree)
 		s+= char
 	else:
 		while len(input) > 0:
 			found = False
-			for i in sorted(codes, reverse=True):
-				if input[0:len(i)] in codes:
-					s += codes[input[0:len(i)]]
-					found = True
-					input = input[len(i):]
-					break
+			if doH:
+				for i in sorted(codes, reverse=False):
+					if input[0:len(i)] in codes:
+						s += codes[input[0:len(i)]]
+						found = True
+						input = input[len(i):]
+						break
 			if not found:
 				char, input, code = decodeIt(input, tree)
 				if not code in codes:
 					codes[code] = char
 				s+= char
-	print
 	return s
 
 # It recursively build the tree from a binary string input. The 0 represents
@@ -299,12 +299,6 @@ def huffmanDecompression(inputFile, outFile):
 """""""""""""""""""""""""""""""" MAIN """""""""""""""""""""""""""""""
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
-"""input = "probando wey"
-_, comp, head = preCompression(input)
-out = head+comp
-tree, compression = buildTree(out[8:],int(out[:8],2))
-preDecompression(compression, tree)"""
-
 # arguments
 if len(sys.argv) == 3 :
 	type = sys.argv[1]
@@ -313,10 +307,13 @@ if len(sys.argv) == 3 :
 		start = time.time()
 		compressedSize = huffmanCompression(file, file+".huf")
 		end = time.time()
-		print ("Time neeed: " + str(end - start) + "seg")
 		uncompressedSize = os.stat(file).st_size
-		print('Uncompressed Size: %s bytes'%uncompressedSize)
-		print('Compressed Size: %s bytes'%compressedSize)
+		percentage = compressedSize/float(uncompressedSize)
+
+		print ("Time neeed: " + str(end - start) + "seg")
+		print("Uncompressed: %s bytes"%uncompressedSize)
+		print("Compressed: %s bytes"%compressedSize)
+		print("Precentage: %s"%percentage)
 	elif type == "-d": #decompress
 		start = time.time()
 		huffmanDecompression(file+".huf", file)
