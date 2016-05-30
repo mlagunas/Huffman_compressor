@@ -20,6 +20,8 @@ It has implemented a basic Huffman compressor/ decompressor with a small improve
 
 ## USAGE 
 
+### Compress/ decompress
+
 To compress or decompress call the script with -c (compress) or -d (decompress)
 ```
 python huffman.py -c|-d file
@@ -30,7 +32,8 @@ python huffman.py -c|-d file
     
     file: file to compress/decompress
 
-
+### Checking the resulting file
+ 
 In case you want to test 2 files call the script with -t flag, it will print the differences between both files.
 ```	
 python huffman.py -t file1 file2
