@@ -1,7 +1,7 @@
 # Huffman compressor/ decompressor
 
 Code developed for educational purposes during the course Basic algorithms at the University of Zaragoza, Spain.
-It has implemented a basic Huffman compressor/ decompressor with a small improvement in decompression which optimize the time for this task.
+The code implements a basic Huffman compressor/ decompressor with a small improvement in decompression which optimize the time for this task, using memoization.
 
 <table>
 
