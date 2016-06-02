@@ -276,7 +276,6 @@ def buildTree(input, count, node = None, root = None):
 # the given lenghts and the header, it builds the binary tree to decompress
 # the code an decompress it. Then it stores the message in the outFile.
 def huffmanDecompression(inputFile, outFile):
-	inputFile = "test/prueba.huf"
 	inf = open(inputFile,'r')
 	outf = open(outFile,'w')
 
@@ -301,30 +300,81 @@ def huffmanDecompression(inputFile, outFile):
 	inf.close()
 	outf.close()
 
+def compress(file):
+	start = time.time()
+	compressedSize = huffmanCompression(file, file+".huf")
+	end = time.time()
+	uncompressedSize = os.stat(file).st_size
+	percentage = compressedSize/float(uncompressedSize)
+	print ("Time neeed: " + str(end - start) + "seg")
+	print("Uncompressed: %s bytes"%uncompressedSize)
+	print("Compressed: %s bytes"%compressedSize)
+	print("Precentage: %s"%percentage)
+
+def decompress(file):
+	start = time.time()
+	huffmanDecompression(file+".huf", file)
+	end = time.time()
+	print ("Time neeed: " + str(end - start) + "seg")
+
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 """""""""""""""""""""""""""""""" MAIN """""""""""""""""""""""""""""""
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 # arguments
-if len(sys.argv) == 3 :
+if len(sys.argv) == 2:
+	type = sys.argv[1]
+	if type == "-T":
+		print "test1"
+		print "compress"
+		compress("test/test1")
+		print "decompress"
+		decompress("test/test1")
+		os.system("diff " + "test/test1" + " " + "test/original_test1")
+		print
+		print "test2"
+		print "compress"
+		compress("test/test2")
+		print "decompress"
+		decompress("test/test2")
+		os.system("diff " + "test/test2" + " " + "test/original_test2")
+		print
+		print "test3"
+		print "compress"
+		compress("test/test3")
+		print "decompress"
+		decompress("test/test3")
+		os.system("diff " + "test/test3" + " " + "test/original_test3")
+		print
+		print "test4"
+		print "compress"
+		compress("test/test4")
+		print "decompress"
+		decompress("test/test4")
+		os.system("diff " + "test/test4" + " " + "test/original_test4")
+		print
+		print "test5"
+		print "compress"
+		compress("test/test5")
+		print "decompress"
+		decompress("test/test5")
+		os.system("diff " + "test/test5" + " " + "test/original_test5")
+		print
+		print "test6"
+		print "compress"
+		compress("test/test6")
+		print "decompress"
+		decompress("test/test6")
+		os.system("diff " + "test/test6" + " " + "test/original_test6")
+	else:
+		usage()
+elif len(sys.argv) == 3 :
 	type = sys.argv[1]
 	file = sys.argv[2]
 	if type == "-c": #Compress
-		start = time.time()
-		compressedSize = huffmanCompression(file, file+".huf")
-		end = time.time()
-		uncompressedSize = os.stat(file).st_size
-		percentage = compressedSize/float(uncompressedSize)
-
-		print ("Time neeed: " + str(end - start) + "seg")
-		print("Uncompressed: %s bytes"%uncompressedSize)
-		print("Compressed: %s bytes"%compressedSize)
-		print("Precentage: %s"%percentage)
+		compress(file)
 	elif type == "-d": #decompress
-		start = time.time()
-		huffmanDecompression(file+".huf", file)
-		end = time.time()
-		print ("Time neeed: " + str(end - start) + "seg")
+		decompress(file)
 	else:
 		usage()
 elif len(sys.argv) == 4:
