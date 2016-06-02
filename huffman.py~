@@ -296,6 +296,8 @@ def huffmanDecompression(inputFile, outFile):
 	if count != 0: res = preDecompression(compression[:-count], tree)
 	else: res = preDecompression(compression, tree)
 
+
+	print res
 	outf.write(res)#Write result in the file
 
 	inf.close()
