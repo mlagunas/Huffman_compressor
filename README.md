@@ -63,7 +63,7 @@ python huffman.py -t file1 file2
      <td>Test3</td> <td>21040 bytes</td> <td>11925 bytes</td> <td>0.04806 sec</td>
   </tr>
     <tr>
-     <td>Test4</td> <td>252723 bytes</td> <td>134484 bytes</td> <td>0.5.56854 sec</td>
+     <td>Test4</td> <td>252723 bytes</td> <td>134484 bytes</td> <td>5.56854 sec</td>
   </tr>
     <tr>
      <td>Test5</td> <td>152 bytes</td> <td>181 bytes</td> <td>0.001052 sec</td>
