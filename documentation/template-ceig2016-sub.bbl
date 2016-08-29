@@ -1,9 +1,4 @@
-\begin{thebibliography}{\uppercase{Bro}}
-
-\bibitem[Bro]{compress}
-\textsc{Brown B.}:
-\newblock \emph{Text Compression with Huffman Coding}.
-\newblock \url{https://www.youtube.com/watch?v=ZdooBTdW5bM}.
+\begin{thebibliography}{\uppercase{Pyt}}
 
 \bibitem[Pyt]{heapify}
 \textsc{Python Software Foundation}:
