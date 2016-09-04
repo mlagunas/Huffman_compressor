@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # Author; Manuel Lagunas
-# 29/5/2016
+# 29/8/2016
 # Readable code implementing huffman compression/decompression
 
 from itertools import groupby
